@@ -13,9 +13,10 @@ export const timeline: TimelineMiddlewareFactory = function (
     options.enabled ?? (process.env.NODE_ENV !== "production");
   const slowThreshold = options.slowThreshold ?? 50;
 
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!isEnabled) {
-      return next();
+      next();
+      return;
     }
 
     try {
@@ -42,7 +43,7 @@ export const timeline: TimelineMiddlewareFactory = function (
       console.error("[reqtimeline] Error initializing timeline middleware:", err);
     }
 
-    return next();
+    next();
   };
 };
 
@@ -50,17 +51,20 @@ export const timeline: TimelineMiddlewareFactory = function (
  * Helper to attach named step middleware or wrap middleware functions.
  */
 timeline.mark = function (name: string, middleware?: RequestHandler): RequestHandler {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.timeline) {
       if (middleware) {
-        return middleware(req, res, next);
+        middleware(req, res, next);
+        return;
       }
-      return next();
+      next();
+      return;
     }
 
     if (!middleware) {
       req.timeline.mark(name);
-      return next();
+      next();
+      return;
     }
 
     // Wrap middleware execution safely
@@ -74,10 +78,11 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
     try {
       const result = req.timeline.time(name, () => {
         return new Promise<void>((resolve, reject) => {
-          let calledNextInHandler = false;
-
-          const origNext: NextFunction = (err?: any) => {
-            calledNextInHandler = true;
+          let settled = false;
+          const settle = (err?: any) => {
+            if (settled) return;
+            settled = true;
+            res.removeListener("finish", settle);
             if (err) {
               reject(err);
             } else {
@@ -85,28 +90,30 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
             }
           };
 
+          const origNext: NextFunction = (err?: any) => {
+            settle(err);
+          };
+
+          // If middleware handles response without calling next (e.g. res.send)
+          res.once("finish", settle);
+
           try {
             const syncResult = middleware(req, res, origNext);
 
             if (syncResult && typeof (syncResult as any).then === "function") {
-              (syncResult as any).then(() => resolve()).catch((e: any) => reject(e));
-            } else if (!calledNextInHandler) {
-              // If middleware finished synchronously and didn't call next (e.g. res.send), resolve step
-              resolve();
+              (syncResult as any).then(() => settle()).catch((e: any) => settle(e));
             }
           } catch (syncErr) {
-            reject(syncErr);
+            settle(syncErr);
           }
         });
       });
 
       result
         .then(() => {
-          // If the middleware called next in origNext, safeNext will be triggered via next() logic
-          // If handler called res.send without next, safeNext won't be double invoked
           safeNext();
         })
-        .catch((err) => {
+        .catch((err: any) => {
           safeNext(err);
         });
     } catch (err) {
@@ -114,3 +121,5 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
     }
   };
 };
+
+
