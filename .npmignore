@@ -1,0 +1,17 @@
+# Source & Tests
+src/
+tests/
+examples/
+.github/
+
+# Tooling configs
+tsconfig.json
+tsup.config.ts
+vitest.config.ts
+eslint.config.js
+prettier.config.js
+
+# Output & Logs
+coverage/
+*.log
+.DS_Store
