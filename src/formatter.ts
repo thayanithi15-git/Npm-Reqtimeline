@@ -1,4 +1,4 @@
-import type { TimelineSummary } from "./types";
+import type { TimelineStep, TimelineSummary } from "./types";
 
 interface FormatterOptions {
   color?: boolean;
@@ -122,7 +122,7 @@ export function formatJson(summary: TimelineSummary): string {
     path: summary.url,
     statusCode: summary.statusCode,
     duration: summary.duration,
-    steps: summary.steps.map((step) => ({
+    steps: summary.steps.map((step: TimelineStep) => ({
       name: step.name,
       relativeTime: step.relativeTime,
       duration: step.duration,

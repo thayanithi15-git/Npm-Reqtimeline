@@ -69,7 +69,7 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
 
     // Wrap middleware execution safely
     let nextCalled = false;
-    const safeNext: NextFunction = (err?: any) => {
+    const safeNext: NextFunction = (err?: unknown) => {
       if (nextCalled) return;
       nextCalled = true;
       next(err);
@@ -79,7 +79,7 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
       const result = req.timeline.time(name, () => {
         return new Promise<void>((resolve, reject) => {
           let settled = false;
-          const settle = (err?: any) => {
+          const settle = (err?: unknown) => {
             if (settled) return;
             settled = true;
             res.removeListener("finish", settle);
@@ -90,7 +90,7 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
             }
           };
 
-          const origNext: NextFunction = (err?: any) => {
+          const origNext: NextFunction = (err?: unknown) => {
             settle(err);
           };
 
@@ -101,7 +101,7 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
             const syncResult = middleware(req, res, origNext);
 
             if (syncResult && typeof (syncResult as any).then === "function") {
-              (syncResult as any).then(() => settle()).catch((e: any) => settle(e));
+              (syncResult as any).then(() => settle()).catch((e: unknown) => settle(e));
             }
           } catch (syncErr) {
             settle(syncErr);
@@ -113,13 +113,11 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
         .then(() => {
           safeNext();
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
           safeNext(err);
         });
-    } catch (err) {
+    } catch (err: unknown) {
       safeNext(err);
     }
   };
 };
-
-

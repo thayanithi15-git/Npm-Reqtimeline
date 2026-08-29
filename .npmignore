@@ -13,5 +13,6 @@ prettier.config.js
 
 # Output & Logs
 coverage/
+powershell.cmd
 *.log
 .DS_Store
