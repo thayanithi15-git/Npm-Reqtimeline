@@ -1,0 +1,75 @@
+{
+  "name": "reqtimeline",
+  "version": "1.0.0",
+  "description": "Express.js request lifecycle and middleware timing profiler",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ tests/",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "keywords": [
+    "express",
+    "expressjs",
+    "middleware",
+    "performance",
+    "profiling",
+    "request",
+    "timing",
+    "debugging",
+    "nodejs",
+    "typescript",
+    "profiler",
+    "metrics",
+    "benchmark"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thayanithi15-git/Npm-Reqtimeline.git"
+  },
+  "bugs": {
+    "url": "https://github.com/thayanithi15-git/Npm-Reqtimeline/issues"
+  },
+  "homepage": "https://github.com/thayanithi15-git/Npm-Reqtimeline#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "express": ">=4.18.0 <6"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/supertest": "^6.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "express": "^4.21.2",
+    "prettier": "^3.3.0",
+    "supertest": "^7.0.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.8"
+  }
+}
