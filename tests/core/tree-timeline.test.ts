@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TimelineRecorder, formatTerminal, formatJson } from "../src/index";
+import { TimelineRecorder, formatTerminal, formatJson } from "../../src/index";
+import type { TimelineStep } from "../../src/index";
 
 describe("Request Timeline Tree & Nested Steps", () => {
   it("should record nested child steps within parent step", async () => {
@@ -56,10 +57,10 @@ describe("Request Timeline Tree & Nested Steps", () => {
 
     const summary = recorder.finish(200);
     const jsonStr = formatJson(summary);
-    const parsed = JSON.parse(jsonStr);
+    const parsed: { path: string; steps: TimelineStep[] } = JSON.parse(jsonStr);
 
     expect(parsed.path).toBe("/api/dashboard");
-    const controllerStep = parsed.steps.find((s: any) => s.name === "controller");
-    expect(controllerStep.children[0].name).toBe("database");
+    const controllerStep = parsed.steps.find((s) => s.name === "controller");
+    expect(controllerStep?.children?.[0].name).toBe("database");
   });
 });

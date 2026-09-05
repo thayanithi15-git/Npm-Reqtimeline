@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { timeline } from "../src/index";
-import type { TimelineSummary } from "../src/types";
+import type { TimelineSummary } from "../src/index";
 
 describe("reqtimeline - Named Middleware and Dynamic Marking", () => {
   it("should record standalone named middleware steps", async () => {

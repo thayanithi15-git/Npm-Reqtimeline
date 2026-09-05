@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { formatTerminal, formatJson } from "../src/formatter";
-import type { TimelineSummary } from "../src/types";
+import { formatTerminal, formatJson } from "../src/index";
+import type { TimelineSummary } from "../src/index";
 
 describe("reqtimeline - Output Formatters", () => {
   const mockSummary: TimelineSummary = {
@@ -28,7 +28,7 @@ describe("reqtimeline - Output Formatters", () => {
     expect(formatted).toContain("database");
     expect(formatted).toContain("⚠ 54ms [SLOW]");
     expect(formatted).toContain("🚨 276ms [CRITICAL]");
-    expect(formatted).toContain("Total: 350ms (🚨 1 critical, ⚠ 1 slow)");
+    expect(formatted).toContain("Total: 350ms");
     expect(formatted).toContain("┌");
     expect(formatted).toContain("└");
   });

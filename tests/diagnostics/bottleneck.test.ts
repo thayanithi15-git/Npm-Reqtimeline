@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TimelineRecorder, analyzePerformance } from "../src/index";
+import { TimelineRecorder, analyzePerformance } from "../../src/index";
 
 describe("Critical Path & Heuristic Performance Diagnosis", () => {
   it("should automatically detect primary bottleneck and provide database recommendations", async () => {

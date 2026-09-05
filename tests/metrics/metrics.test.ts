@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { MetricsAggregator, timeline } from "../src/index";
+import { MetricsAggregator, timeline } from "../../src/index";
 
 describe("Request Aggregation, P50/P75/P95/P99, & Performance Score", () => {
   let aggregator: MetricsAggregator;
