@@ -89,8 +89,8 @@ describe("Core Profiler & Express Lifecycle", () => {
     expect(terminalOut).toContain("├── database");
 
     const jsonStr = formatJson(summary);
-    const parsed = JSON.parse(jsonStr);
-    expect(parsed.steps.find((s: any) => s.name === "controller").children).toBeDefined();
+    const parsed: { steps: TimelineStep[] } = JSON.parse(jsonStr);
+    expect(parsed.steps.find((s) => s.name === "controller")?.children).toBeDefined();
   });
 
   it("should handle Express 404s and POST JSON bodies cleanly", async () => {
