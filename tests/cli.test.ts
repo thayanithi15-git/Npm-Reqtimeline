@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderDashboard, renderBarChart } from "../../src/cli/dashboard";
+import { renderDashboard, renderBarChart } from "../src/cli/dashboard";
 
 describe("Interactive CLI Dashboard", () => {
   it("should render ASCII bar charts proportional to values", () => {
@@ -10,7 +10,7 @@ describe("Interactive CLI Dashboard", () => {
     expect(barsHalf).toBe("█████");
   });
 
-  it("should render dashboard layout with metrics and slowest routes", () => {
+  it("should render live CLI dashboard layout with metrics and slowest routes", () => {
     const mockMetrics = {
       totalRequests: 1248,
       p50: 42,
