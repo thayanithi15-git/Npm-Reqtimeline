@@ -1,7 +1,7 @@
 import type { TimelineStep, TimelineSummary } from "../types";
 
 export function formatJson(summary: TimelineSummary): string {
-  const mapStep = (step: TimelineStep): any => {
+  const mapStep = (step: TimelineStep): Record<string, unknown> => {
     const isBottleneck = step.isBottleneck || step.status === "bottleneck";
     const isCritical = step.critical ?? step.duration >= 200;
     const isSlow = step.slow || isCritical;

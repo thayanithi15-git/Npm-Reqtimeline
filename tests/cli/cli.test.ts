@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderDashboard, renderBarChart } from "../src/cli/dashboard";
+import { renderDashboard, renderBarChart } from "../../src/cli/dashboard";
 
 describe("Interactive CLI Dashboard", () => {
   it("should render ASCII bar charts proportional to values", () => {

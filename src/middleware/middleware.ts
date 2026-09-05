@@ -125,8 +125,8 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
           try {
             const syncResult = middleware(req, res, origNext);
 
-            if (syncResult && typeof (syncResult as any).then === "function") {
-              (syncResult as any).then(() => settle()).catch((e: unknown) => settle(e));
+            if (syncResult && typeof (syncResult as Record<string, unknown>).then === "function") {
+              (syncResult as Promise<unknown>).then(() => settle()).catch((e: unknown) => settle(e));
             }
           } catch (syncErr) {
             settle(syncErr);

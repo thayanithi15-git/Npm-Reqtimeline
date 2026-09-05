@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import express from "express";
 import request from "supertest";
-import { timeline } from "../src/index";
+import { timeline } from "../../src/index";
 
 describe("reqtimeline - Safety & Disabled Mode", () => {
   it("should bypass timing work when enabled: false", async () => {
@@ -40,7 +40,6 @@ describe("reqtimeline - Safety & Disabled Mode", () => {
       throw new Error("Application custom error");
     });
 
-    // Custom express error handler
     app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
       res.status(500).json({ error: err.message });
     });
