@@ -1,20 +1,14 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
-import { TimelineRecorder } from "./recorder";
-import { dispatchOutput } from "./output";
-import { globalMetrics } from "./metrics";
-import type { TimelineOptions, TimelineMiddlewareFactory, TimelineMetrics } from "./types";
+import { TimelineRecorder } from "../core/recorder";
+import { dispatchOutput } from "../formatting/output";
+import { globalMetrics } from "../metrics/aggregator";
+import type { TimelineOptions, TimelineMiddlewareFactory, TimelineMetrics, RouteFingerprint } from "../types";
 import { randomBytes } from "crypto";
 
-/**
- * Generate a short, unique request ID if non-crypto uuid is unavailable.
- */
 function generateRequestId(): string {
   return "req-" + randomBytes(4).toString("hex");
 }
 
-/**
- * Main reqtimeline Express middleware factory.
- */
 export const timeline: TimelineMiddlewareFactory = function (
   options: TimelineOptions = {}
 ): RequestHandler {
@@ -34,7 +28,6 @@ export const timeline: TimelineMiddlewareFactory = function (
     try {
       const url = req.originalUrl || req.url || "/";
 
-      // Request ID extraction or generation
       let reqId: string | undefined = undefined;
       const headerVal = req.headers[requestIdHeader];
 
@@ -84,9 +77,6 @@ export const timeline: TimelineMiddlewareFactory = function (
   return middlewareHandler;
 } as unknown as TimelineMiddlewareFactory;
 
-/**
- * Helper to attach named step middleware or wrap middleware functions.
- */
 timeline.mark = function (name: string, middleware?: RequestHandler): RequestHandler {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.timeline) {
@@ -104,7 +94,6 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
       return;
     }
 
-    // Wrap middleware execution safely
     let nextCalled = false;
     const safeNext: NextFunction = (err?: unknown) => {
       if (nextCalled) return;
@@ -131,7 +120,6 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
             settle(err);
           };
 
-          // If middleware handles response without calling next (e.g. res.send)
           res.once("finish", settle);
 
           try {
@@ -159,16 +147,18 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
   };
 };
 
-/**
- * Retrieve global aggregated request metrics (P50, P95, P99, Performance Score).
- */
 timeline.getMetrics = function (): TimelineMetrics {
   return globalMetrics.getMetrics();
 };
 
-/**
- * Reset global request metrics aggregator.
- */
+timeline.getFingerprints = function (): RouteFingerprint[] {
+  return globalMetrics.fingerprints.getFingerprints();
+};
+
+timeline.getRouteStats = function (routeKey: string): RouteFingerprint | undefined {
+  return globalMetrics.fingerprints.getRouteStats(routeKey);
+};
+
 timeline.resetMetrics = function (): void {
   globalMetrics.reset();
 };

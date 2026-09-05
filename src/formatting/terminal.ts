@@ -1,13 +1,10 @@
-import type { TimelineStep, TimelineSummary } from "./types";
+import type { RouteFingerprint, TimelineStep, TimelineSummary } from "../types";
 
 interface FormatterOptions {
   color?: boolean;
   includeStatusCode?: boolean;
 }
 
-/**
- * ANSI escape codes for terminal color formatting.
- */
 const COLORS = {
   reset: "\x1b[0m",
   bold: "\x1b[1m",
@@ -24,9 +21,6 @@ const COLORS = {
   magenta: "\x1b[35m",
 };
 
-/**
- * Strip ANSI codes to accurately calculate string lengths for box padding.
- */
 function stripAnsi(str: string): string {
   return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
@@ -36,9 +30,6 @@ interface FormattedLine {
   display: string;
 }
 
-/**
- * Recursively format steps into tree branch lines with visual indentation.
- */
 function buildTreeLines(
   steps: TimelineStep[],
   options: {
@@ -64,13 +55,9 @@ function buildTreeLines(
     const isCritical = step.critical || step.status === "critical";
     const isSlow = step.slow || step.status === "slow" || isCritical;
 
-    if (isBottleneck) {
-      counts.bottleneck++;
-    } else if (isCritical) {
-      counts.critical++;
-    } else if (isSlow) {
-      counts.slow++;
-    }
+    if (isBottleneck) counts.bottleneck++;
+    else if (isCritical) counts.critical++;
+    else if (isSlow) counts.slow++;
 
     let symbolStr = `${c.green}✓${c.reset}`;
     let rawSymbol = "✓";
@@ -89,13 +76,11 @@ function buildTreeLines(
       rawSymbol = `${step.duration}ms ✓`;
     }
 
+    const nameDisplay = step.isExternal ? `${c.cyan}${step.name}${c.reset}` : step.name;
     const rawLine = `${relativeStr}    ${currentPrefix}${step.name}    ${rawSymbol}`;
-    const displayLine = `${c.gray}${relativeStr.padEnd(7)}${c.reset} ${currentPrefix}${step.name.padEnd(20)} ${symbolStr}`;
+    const displayLine = `${c.gray}${relativeStr.padEnd(7)}${c.reset} ${currentPrefix}${nameDisplay.padEnd(20)} ${symbolStr}`;
 
-    lines.push({
-      raw: rawLine,
-      display: displayLine,
-    });
+    lines.push({ raw: rawLine, display: displayLine });
 
     if (hasChildren && step.children) {
       const childPrefix = prefix + ((step.level ?? 0) > 0 ? (isLast ? "    " : "│   ") : "│   ");
@@ -111,9 +96,6 @@ function buildTreeLines(
   return lines;
 }
 
-/**
- * Format a TimelineSummary into a rich terminal diagnostic report with Bottlenecks and Insights.
- */
 export function formatTerminal(
   summary: TimelineSummary,
   options: FormatterOptions = {}
@@ -139,7 +121,6 @@ export function formatTerminal(
         magenta: "",
       };
 
-  // Header line construction
   let header = `${summary.method} ${summary.url}`;
   if (includeStatus && summary.statusCode !== undefined) {
     let statusColor = c.green;
@@ -156,7 +137,6 @@ export function formatTerminal(
   const counts = { slow: 0, critical: 0, bottleneck: 0 };
   const formattedSteps = buildTreeLines(summary.steps, { color: useColor, c }, counts);
 
-  // Footer construction with warning summary badges
   let footerWarningRaw = "";
   let footerWarningDisplay = "";
 
@@ -184,7 +164,6 @@ export function formatTerminal(
   const footerRaw = `Total: ${summary.duration}ms${footerWarningRaw}`;
   const footerDisplay = `${c.boldCyan}Total: ${summary.duration}ms${c.reset}${footerWarningDisplay}`;
 
-  // Bottleneck box section
   const bottleneckLines: FormattedLine[] = [];
   if (summary.bottleneck) {
     const titleRaw = `⚡ Bottleneck: ${summary.bottleneck.name}`;
@@ -196,7 +175,6 @@ export function formatTerminal(
     bottleneckLines.push({ raw: detailRaw, display: detailDisplay });
   }
 
-  // Performance Insight section
   const insightLines: FormattedLine[] = [];
   if (summary.insight) {
     const headerRaw = `⚠ Performance Insight`;
@@ -215,7 +193,6 @@ export function formatTerminal(
     insightLines.push({ raw: recTextRaw, display: recTextDisplay });
   }
 
-  // Find inner content box width (minimum 50 characters)
   const allRaws = [
     stripAnsi(header),
     stripAnsi(footerRaw),
@@ -259,46 +236,49 @@ export function formatTerminal(
   return outputRows.join("\n");
 }
 
-/**
- * Format a TimelineSummary into structured JSON.
- */
-export function formatJson(summary: TimelineSummary): string {
-  const mapStep = (step: TimelineStep): any => {
-    const isBottleneck = step.isBottleneck || step.status === "bottleneck";
-    const isCritical = step.critical ?? step.duration >= 200;
-    const isSlow = step.slow || isCritical;
-    const status = isBottleneck
-      ? "bottleneck"
-      : isCritical
-      ? "critical"
-      : isSlow
-      ? "slow"
-      : "ok";
+export function formatFingerprintsTerminal(
+  fingerprints: RouteFingerprint[],
+  useColor = true
+): string {
+  const c = useColor
+    ? COLORS
+    : {
+        reset: "",
+        bold: "",
+        dim: "",
+        gray: "",
+        green: "",
+        yellow: "",
+        red: "",
+        boldRed: "",
+        boldYellow: "",
+        boldGreen: "",
+        cyan: "",
+        boldCyan: "",
+        magenta: "",
+      };
 
-    return {
-      name: step.name,
-      relativeTime: step.relativeTime,
-      duration: step.duration,
-      slow: isSlow,
-      critical: isCritical,
-      isBottleneck,
-      status,
-      level: step.level ?? 0,
-      children: step.children ? step.children.map(mapStep) : undefined,
-    };
-  };
+  const lines: string[] = [];
+  lines.push(`${c.boldYellow}Slow Request Patterns${c.reset}`);
+  lines.push(`${c.gray}────────────────────────────────────────${c.reset}`);
 
-  const jsonOutput = {
-    requestId: summary.requestId,
-    method: summary.method,
-    path: summary.url,
-    statusCode: summary.statusCode,
-    duration: summary.duration,
-    performanceScore: summary.performanceScore,
-    bottleneck: summary.bottleneck,
-    insight: summary.insight,
-    steps: summary.steps.map(mapStep),
-  };
+  if (fingerprints.length === 0) {
+    lines.push(`${c.gray}No request fingerprints recorded yet.${c.reset}`);
+    return lines.join("\n");
+  }
 
-  return JSON.stringify(jsonOutput, null, 2);
+  for (const fp of fingerprints) {
+    lines.push(`${c.boldCyan}${fp.route}${c.reset}`);
+    lines.push(`${c.gray}────────────────────────────────────────${c.reset}`);
+    lines.push(`Requests:      ${fp.count.toLocaleString()}`);
+    lines.push(`Average:       ${fp.avgDuration}ms`);
+    lines.push(`P50:           ${fp.p50}ms`);
+    lines.push(`P75:           ${fp.p75}ms`);
+    lines.push(`P95:           ${fp.p95}ms`);
+    lines.push(`P99:           ${fp.p99}ms`);
+    lines.push(`Slow:          ${c.yellow}${fp.slowCount}${c.reset}`);
+    lines.push("");
+  }
+
+  return lines.join("\n");
 }
