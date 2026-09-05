@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import express from "express";
 import request from "supertest";
 import { timeline, TimelineRecorder, formatTerminal, formatJson } from "../src/index";
-import type { TimelineSummary } from "../src/index";
+import type { TimelineSummary, TimelineStep } from "../src/index";
 
 describe("Core Profiler & Express Lifecycle", () => {
   it("should record basic request lifecycle and dispatch summary", async () => {
