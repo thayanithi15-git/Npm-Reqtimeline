@@ -1,7 +1,16 @@
 import type { Request, Response, NextFunction, RequestHandler } from "express";
 import { TimelineRecorder } from "./recorder";
 import { dispatchOutput } from "./output";
-import type { TimelineOptions, TimelineMiddlewareFactory } from "./types";
+import { globalMetrics } from "./metrics";
+import type { TimelineOptions, TimelineMiddlewareFactory, TimelineMetrics } from "./types";
+import { randomBytes } from "crypto";
+
+/**
+ * Generate a short, unique request ID if non-crypto uuid is unavailable.
+ */
+function generateRequestId(): string {
+  return "req-" + randomBytes(4).toString("hex");
+}
 
 /**
  * Main reqtimeline Express middleware factory.
@@ -12,8 +21,11 @@ export const timeline: TimelineMiddlewareFactory = function (
   const isEnabled =
     options.enabled ?? (process.env.NODE_ENV !== "production");
   const slowThreshold = options.slowThreshold ?? 50;
+  const criticalThreshold = options.criticalThreshold ?? 200;
+  const requestIdHeader = (options.requestIdHeader ?? "x-request-id").toLowerCase();
+  const shouldGenerateRequestId = options.generateRequestId ?? true;
 
-  return (req: Request, res: Response, next: NextFunction): void => {
+  const middlewareHandler: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
     if (!isEnabled) {
       next();
       return;
@@ -21,7 +33,30 @@ export const timeline: TimelineMiddlewareFactory = function (
 
     try {
       const url = req.originalUrl || req.url || "/";
-      const recorder = new TimelineRecorder(req.method, url, slowThreshold);
+
+      // Request ID extraction or generation
+      let reqId: string | undefined = undefined;
+      const headerVal = req.headers[requestIdHeader];
+
+      if (typeof headerVal === "string" && headerVal.trim().length > 0) {
+        reqId = headerVal.trim();
+      } else if (Array.isArray(headerVal) && headerVal.length > 0) {
+        reqId = headerVal[0].trim();
+      } else if (shouldGenerateRequestId) {
+        reqId = generateRequestId();
+      }
+
+      if (reqId) {
+        req.requestId = reqId;
+      }
+
+      const recorder = new TimelineRecorder(
+        req.method,
+        url,
+        slowThreshold,
+        criticalThreshold,
+        reqId
+      );
       req.timeline = recorder;
 
       let finished = false;
@@ -45,7 +80,9 @@ export const timeline: TimelineMiddlewareFactory = function (
 
     next();
   };
-};
+
+  return middlewareHandler;
+} as unknown as TimelineMiddlewareFactory;
 
 /**
  * Helper to attach named step middleware or wrap middleware functions.
@@ -120,4 +157,18 @@ timeline.mark = function (name: string, middleware?: RequestHandler): RequestHan
       safeNext(err);
     }
   };
+};
+
+/**
+ * Retrieve global aggregated request metrics (P50, P95, P99, Performance Score).
+ */
+timeline.getMetrics = function (): TimelineMetrics {
+  return globalMetrics.getMetrics();
+};
+
+/**
+ * Reset global request metrics aggregator.
+ */
+timeline.resetMetrics = function (): void {
+  globalMetrics.reset();
 };

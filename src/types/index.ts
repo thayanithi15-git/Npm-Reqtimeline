@@ -14,6 +14,8 @@ export interface TimelineStep {
   slow: boolean;
   /** Flag indicating if duration exceeded criticalThreshold */
   critical?: boolean;
+  /** Flag indicating if step is an external API / service call */
+  isExternal?: boolean;
   /** Flag indicating if step is the primary bottleneck */
   isBottleneck?: boolean;
   /** Timing status category */
@@ -78,6 +80,7 @@ export interface TimelineSummary {
 export interface TimelineMetrics {
   totalRequests: number;
   p50: number;
+  p75: number;
   p95: number;
   p99: number;
   avgDuration: number;
@@ -85,6 +88,22 @@ export interface TimelineMetrics {
   maxDuration: number;
   errorRate: number;
   performanceScore: number;
+}
+
+/**
+ * Route-specific aggregated performance metrics for slow request fingerprinting.
+ */
+export interface RouteFingerprint {
+  route: string;
+  method: string;
+  url: string;
+  count: number;
+  avgDuration: number;
+  p50: number;
+  p75: number;
+  p95: number;
+  p99: number;
+  slowCount: number;
 }
 
 /**
@@ -143,7 +162,7 @@ export interface TimelineOptions {
   enableInsights?: boolean;
 
   /**
-   * Track global request latency metrics (P50, P95, P99, Performance Score).
+   * Track global request latency metrics (P50, P75, P95, P99, Performance Score).
    * @default true
    */
   aggregate?: boolean;
@@ -168,21 +187,22 @@ export interface TimelineOptions {
 }
 
 /**
- * Timeline Middleware Factory interface with `.mark()` helper method attached.
+ * Timeline Middleware Factory interface with helper methods.
  */
 export interface TimelineMiddlewareFactory {
   (options?: TimelineOptions): RequestHandler;
   mark(name: string, middleware?: RequestHandler): RequestHandler;
   getMetrics(): TimelineMetrics;
+  getFingerprints(): RouteFingerprint[];
+  getRouteStats(routeKey: string): RouteFingerprint | undefined;
   resetMetrics(): void;
 }
 
 declare global {
   namespace Express {
     interface Request {
-      timeline?: import("./recorder").TimelineRecorder;
+      timeline?: import("../core/recorder").TimelineRecorder;
       requestId?: string;
     }
   }
 }
-

@@ -1,21 +1,25 @@
 # reqtimeline
 
-> A lightweight, zero-dependency Express.js request lifecycle and middleware timing profiler.
+> A lightweight, zero-dependency Express.js request lifecycle and middleware timing profiler with Critical Path Bottleneck Detection, Performance Heuristics, and Timeline Tree visualization.
 
-`reqtimeline` helps developers understand **where time is being spent during an HTTP request**. It provides sub-millisecond high-resolution timing, named middleware markers, slow step detection, dynamic async step profiling, and beautiful terminal diagnostics.
+`reqtimeline` helps developers understand **where time is spent during HTTP requests**. It provides sub-millisecond high-resolution timing, named middleware markers, slow step detection, nested request timeline trees, automated bottleneck identification, heuristic performance diagnosis, and global P50/P95/P99 latency aggregation with Performance Score.
 
 ---
 
 ## Features
 
 - ⚡ **Zero Runtime Dependencies** — Pure Node.js high-resolution timers (`performance.now()`).
-- 🎯 **Explicit Middleware Timing** — Name individual middleware steps cleanly with `timeline.mark("name")`.
-- ⚠ **Slow Step Detection** — Configurable threshold (`slowThreshold`) to visually highlight bottleneck operations.
+- 🔥 **Critical Path Detection** — Automatically pinpoints the primary bottleneck causing request slowness.
+- 🧠 **Automatic Performance Diagnosis** — Generates pragmatic, heuristic optimization recommendations.
+- 🌳 **Request Timeline Tree** — Visually maps nested controller, database, cache, and external API steps.
+- 📊 **P50 / P95 / P99 Latency Metrics** — Aggregate metrics across requests with `timeline.getMetrics()`.
+- 💯 **Performance Score** — Real-time performance score (0 - 100) based on Apdex latency distributions and error rates.
+- 🆔 **Request IDs** — Automatic `x-request-id` header inspection or unique ID generation.
 - 🎨 **Beautiful Terminal Output** — Clean Unicode box-drawing format with optional ANSI color coding.
-- 📊 **Structured JSON Output** — Easy integration with logging and diagnostic systems.
+- 📝 **Structured JSON Output** — Easy integration with logging aggregators and APM tools.
 - 🛡 **Non-Intrusive & Error Safe** — Zero interference with Express error handling and response streams.
 - 🚀 **Production Bypass** — Complete zero-overhead opt-out for production environments (`enabled: false`).
-- 📘 **TypeScript-First** — Built with strict TypeScript with complete auto-completion and `.d.ts` declarations.
+- 📘 **TypeScript-First** — Built in strict TypeScript with complete auto-completion and `.d.ts` declarations.
 
 ---
 
@@ -38,8 +42,16 @@ const app = express();
 // Add reqtimeline middleware
 app.use(timeline());
 
-app.get("/users", async (req, res) => {
-  res.json({ users: ["Alice", "Bob"] });
+app.get("/api/orders", async (req, res) => {
+  await req.timeline?.time("auth", () => new Promise(r => setTimeout(r, 3)));
+  await req.timeline?.time("validation", () => new Promise(r => setTimeout(r, 2)));
+
+  await req.timeline?.time("controller", async () => {
+    await req.timeline?.time("database", () => new Promise(r => setTimeout(r, 184)));
+    await req.timeline?.time("external-api", () => new Promise(r => setTimeout(r, 42)));
+  });
+
+  res.json({ status: "success" });
 });
 
 app.listen(3000, () => {
@@ -49,58 +61,78 @@ app.listen(3000, () => {
 
 ---
 
-## Named Middleware
+## 🌳 Request Timeline Tree & Terminal Output
 
-Explicitly name middleware steps to track exact durations:
+When a request completes, `reqtimeline` outputs a formatted diagnostic tree report:
 
-```typescript
-import express from "express";
-import { timeline } from "reqtimeline";
-import { authMiddleware } from "./auth";
-import { validatePayload } from "./validation";
-
-const app = express();
-
-app.use(timeline());
-
-// Option A: Standalone step checkpoints
-app.use(timeline.mark("auth"), authMiddleware);
-app.use(timeline.mark("validation"), validatePayload);
-
-// Option B: Wrapper syntax
-app.use(timeline.mark("database", async (req, res, next) => {
-  await db.connect();
-  next();
-}));
-
-// Option C: Dynamic inline async step timing
-app.get("/api/data", async (req, res) => {
-  const data = await req.timeline?.time("fetch-db", async () => {
-    return await db.query("SELECT * FROM items");
-  });
-  res.json(data);
-});
+```text
+┌──────────────────────────────────────────────────────────┐
+│ GET /api/orders 200 [req-9f3a12b4]                       │
+├──────────────────────────────────────────────────────────┤
+│ +0ms    request received       1ms ✓                     │
+│ +3ms    auth                   3ms ✓                     │
+│ +5ms    validation             2ms ✓                     │
+│ +231ms  controller             226ms ✓                   │
+│ +189ms  │ ├── database         🔴 BOTTLENECK 184ms       │
+│ +231ms  │ └── external-api     42ms ✓                    │
+│ +231ms  response               0ms ✓                     │
+├──────────────────────────────────────────────────────────┤
+│ Total: 231ms (🔴 1 bottleneck)                           │
+├──────────────────────────────────────────────────────────┤
+│ ⚡ Bottleneck: database                                   │
+│    184ms (79% of request time)                           │
+├──────────────────────────────────────────────────────────┤
+│ ⚠ Performance Insight                                   │
+│ database consumed 79% of the request.                    │
+│                                                          │
+│ Recommendation:                                          │
+│ Consider checking database indexes,                      │
+│ query complexity, or connection latency.                 │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Terminal Output
+## 🔥 Critical Path Detection & Performance Insights
 
-When a request completes, `reqtimeline` outputs a formatted diagnostic box in your terminal:
+Instead of forcing you to scan raw timing lists, `reqtimeline` automatically analyzes request execution:
 
-```text
-┌──────────────────────────────────────────────┐
-│ GET /api/users 200                           │
-├──────────────────────────────────────────────┤
-│ 0ms    request received                      │
-│ 2ms    auth                 ✓                │
-│ 3ms    validation           ✓                │
-│ 18ms   controller           ✓                │
-│ 72ms   database             ⚠ 54ms           │
-│ 74ms   response             ✓                │
-├──────────────────────────────────────────────┤
-│ Total: 74ms                                  │
-└──────────────────────────────────────────────┘
+1. **🔴 Primary Bottleneck**: Highlights the exact step causing slowness.
+2. **🧠 Heuristic Recommendations**: Provides targeted optimization tips based on step patterns:
+   - **Database**: Indexes, query complexity, connection pool latency.
+   - **External APIs**: Service latency, connection pooling, response caching.
+   - **Auth / Passwords**: Token caching, password hash cost factor (bcrypt rounds).
+   - **Validation**: Pre-compiling schemas (Zod/Joi) or deferring non-critical validation.
+
+---
+
+## 📊 Aggregated Metrics & Performance Score (P50/P95/P99)
+
+Track global request health metrics across requests:
+
+```typescript
+import { timeline } from "reqtimeline";
+
+app.get("/api/health/metrics", (req, res) => {
+  const metrics = timeline.getMetrics();
+  res.json(metrics);
+});
+```
+
+### Metrics Schema
+
+```json
+{
+  "totalRequests": 1420,
+  "p50": 18,
+  "p95": 84,
+  "p99": 195,
+  "avgDuration": 32,
+  "minDuration": 2,
+  "maxDuration": 412,
+  "errorRate": 0.002,
+  "performanceScore": 94
+}
 ```
 
 ---
@@ -113,84 +145,77 @@ Customize `reqtimeline` options:
 app.use(
   timeline({
     enabled: process.env.NODE_ENV !== "production",
-    slowThreshold: 50, // Flag steps taking >= 50ms as slow
-    output: "terminal", // "terminal" | "json" | "silent" | custom callback
-    color: true,        // Enable terminal colors
-    includeStatusCode: true,
+    slowThreshold: 50,         // Flag steps taking >= 50ms as slow
+    criticalThreshold: 200,    // Flag steps taking >= 200ms as critical
+    requestIdHeader: "x-request-id", // Inspect header for request ID
+    generateRequestId: true,   // Auto-generate UUID request ID if missing
+    enableTree: true,          // Enable nested request tree structure
+    enableInsights: true,      // Enable performance heuristic insights
+    aggregate: true,           // Track P50/P95/P99 latency & performance score
+    output: "terminal",        // "terminal" | "json" | "silent" | custom callback
+    color: true,               // Enable ANSI terminal colors
+    includeStatusCode: true,   // Show HTTP status code in header
   })
 );
 ```
-
-### Options Reference
-
-| Option | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `enabled` | `boolean` | `process.env.NODE_ENV !== "production"` | Enables profiler. Set `false` in production for zero overhead. |
-| `slowThreshold` | `number` | `50` | Milliseconds threshold to flag a step as slow (`⚠`). |
-| `output` | `"terminal" \| "json" \| "silent" \| Function` | `"terminal"` | Output target format or custom summary callback. |
-| `color` | `boolean` | `true` (if TTY) | Enables ANSI colors in terminal mode. |
-| `includeStatusCode` | `boolean` | `true` | Include response HTTP status code in top header. |
 
 ---
 
-## JSON Output
-
-Switch to structured JSON output for log aggregators or programmatic analysis:
+## Structured JSON Output
 
 ```typescript
-app.use(
-  timeline({
-    output: "json",
-  })
-);
+app.use(timeline({ output: "json" }));
 ```
 
-Example JSON output:
+Example JSON response:
 
 ```json
 {
+  "requestId": "req-9f3a12b4",
   "method": "GET",
-  "path": "/api/users",
+  "path": "/api/orders",
   "statusCode": 200,
-  "duration": 74,
+  "duration": 231,
+  "performanceScore": 92,
+  "bottleneck": {
+    "name": "database",
+    "duration": 184,
+    "percentage": 79
+  },
+  "insight": {
+    "target": "database",
+    "percentage": 79,
+    "recommendation": "Consider checking database indexes, query complexity, or connection latency."
+  },
   "steps": [
     {
       "name": "auth",
-      "relativeTime": 2,
-      "duration": 2,
-      "slow": false
-    },
-    {
-      "name": "validation",
       "relativeTime": 3,
-      "duration": 1,
-      "slow": false
+      "duration": 3,
+      "slow": false,
+      "status": "ok"
     },
     {
-      "name": "database",
-      "relativeTime": 72,
-      "duration": 54,
-      "slow": true
+      "name": "controller",
+      "relativeTime": 231,
+      "duration": 226,
+      "slow": true,
+      "status": "slow",
+      "children": [
+        {
+          "name": "database",
+          "relativeTime": 189,
+          "duration": 184,
+          "slow": true,
+          "critical": false,
+          "isBottleneck": true,
+          "status": "bottleneck"
+        }
+      ]
     }
   ]
 }
 ```
-
----
-
-## Production Usage
-
-`reqtimeline` is designed primarily as a development profiler. In production, disable it to bypass timing operations completely:
-
-```typescript
-app.use(
-  timeline({
-    enabled: process.env.NODE_ENV === "development",
-  })
-);
-```
-
-When `enabled: false`, `reqtimeline` immediately delegates to `next()` without creating timers or attaching state.
 
 ---
 
@@ -200,26 +225,18 @@ When `enabled: false`, `reqtimeline` immediately delegates to `next()` without c
 Main Express middleware factory.
 
 ### `timeline.mark(name: string, middleware?: RequestHandler): RequestHandler`
-Creates a named step marker or wraps an existing Express middleware function.
+Creates a named step marker or wraps an Express middleware function.
+
+### `timeline.getMetrics(): TimelineMetrics`
+Returns aggregated P50, P95, P99, error rate, and Performance Score across all recorded requests.
+
+### `timeline.resetMetrics(): void`
+Resets the in-memory global metrics aggregator.
 
 ### `req.timeline`
 The active `TimelineRecorder` instance attached to the Express `Request` object.
 - `req.timeline.mark(name: string)`: Start a named checkpoint.
-- `req.timeline.time(name: string, fn: () => Promise<T> | T)`: Profile an async or sync function.
-
----
-
-## Roadmap
-
-- [x] Express request lifecycle timing
-- [x] Named middleware timing (`timeline.mark`)
-- [x] Slow step detection thresholding
-- [x] Terminal box formatting & ANSI color support
-- [x] Structured JSON output mode
-- [ ] CLI visualization tool (`npx reqtimeline`)
-- [ ] Async operation instrumentation hooks
-- [ ] Nested child step timelines
-- [ ] Database client wrappers (Prisma / TypeORM / Knex)
+- `req.timeline.time(name: string, fn: () => Promise<T> | T)`: Profile an async or sync function (supports nested child steps).
 
 ---
 
@@ -230,7 +247,7 @@ Contributions are welcome! Feel free to open issues or submit pull requests on [
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Run tests and linting (`npm test && npm run lint`)
+4. Run tests and linting (`npm test && npm run typecheck`)
 5. Push to the branch (`git push origin feature/amazing-feature`)
 6. Open a Pull Request
 
