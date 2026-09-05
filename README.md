@@ -1,14 +1,30 @@
 # reqtimeline
 
-> A lightweight, zero-dependency Express.js request lifecycle and middleware timing profiler with Critical Path Bottleneck Detection, Performance Diagnosis Heuristics, Slow Request Fingerprinting, Request Timeline Trees, P50/P75/P95/P99 metrics, and an Interactive CLI Dashboard.
+> A lightweight, zero-dependency Express.js request lifecycle and middleware timing profiler with Critical Path Bottleneck Detection, Performance Diagnosis Heuristics, Slow Request Fingerprinting, Request Timeline Trees, P50/P75/P95/P99 percentiles, and an Interactive CLI Dashboard.
 
-`reqtimeline` helps backend developers understand **where time is being spent during HTTP requests**. It provides sub-millisecond high-resolution timing, named middleware markers, slow step detection, nested request timeline trees, automated bottleneck identification, heuristic performance diagnosis, slow request fingerprinting, and global P50/P75/P95/P99 latency aggregation with Performance Score.
+`reqtimeline` helps backend developers understand **where time is spent during HTTP requests**. It provides sub-millisecond high-resolution timing, named middleware markers, slow step detection, nested request timeline trees, automated bottleneck identification, heuristic performance diagnosis, slow request fingerprinting, and global P50/P75/P95/P99 latency aggregation with real-time Performance Scoring.
 
 ---
 
-## 📁 Clean Domain Folder Architecture
+## 📦 Version Map
 
-`reqtimeline` is organized into clean domain modules:
+| Version 1.0 | Version 1.1 & Advanced Diagnostic Features |
+| :--- | :--- |
+| ⏱ Request timing | 🏷 Status codes & Request IDs |
+| 🔌 Middleware timing | 📈 P50 / P75 / P95 / P99 Percentiles |
+| 🏷 Named steps (`timeline.mark`) | 🔎 Slow Request Fingerprinting |
+| ⚠ Slow-step detection | 💯 Performance Score (0 - 100) |
+| 🖥 Terminal box output | 🔥 Critical Path Bottleneck Detection |
+| 📝 Structured JSON output | 🧠 Automatic Performance Diagnosis (Heuristics) |
+| | 🌳 Request Timeline Tree |
+| | 🌐 External API Timing (`timeExternal`) |
+| | 🖥️ Interactive CLI Dashboard (`npx reqtimeline dashboard`) |
+
+---
+
+## 📁 Modular Domain Architecture
+
+`reqtimeline` is organized into clean, domain-driven subfolders:
 
 ```text
 src/
@@ -19,20 +35,20 @@ src/
 ├── formatting/           # ANSI terminal box drawing & structured JSON formatters
 ├── middleware/           # Express middleware factory & req.timeline binding
 ├── cli/                  # Interactive live CLI dashboard & executable binary
-└── index.ts              # Main entry point exporting all library utilities
+└── index.ts              # Main package entry point exporting all library utilities
 ```
 
 ---
 
 ## ⚡ Features
 
-- ⚡ **Zero Runtime Dependencies** — Pure Node.js high-resolution timers (`performance.now()`).
+- ⚡ **Zero Runtime Dependencies** — Built with native Node.js high-resolution timers (`performance.now()`).
 - 🔥 **Critical Path Bottleneck Detection** — Automatically pinpoints the primary operation causing slowness.
 - 🧠 **Automatic Performance Diagnosis** — Generates pragmatic, heuristic optimization recommendations.
 - 🌳 **Request Timeline Tree** — Visually maps nested controller, database, cache, and external API steps.
 - 🔎 **Slow Request Fingerprinting** — Groups requests by route pattern (`GET /api/users`) to track request counts, average duration, P50/P75/P95/P99, and slow counts.
 - 🌐 **External API Timing** — Dedicated `timeExternal` helper to profile third-party APIs (OpenAI, Stripe, GitHub, Google, microservices).
-- 📈 **P50 / P75 / P95 / P99 Latency Metrics** — Percentile latency distributions to reveal outliers that simple averages hide.
+- 📈 **P50 / P75 / P95 / P99 Latency Metrics** — Percentile distributions to reveal latency outliers that simple averages hide.
 - 💯 **Performance Score (0 - 100)** — Real-time performance score calculated from Apdex latency distributions and error rates.
 - 🖥️ **Interactive CLI Dashboard** — Run `npx reqtimeline dashboard` for live route visualization with ASCII bar charts.
 - 🆔 **Request IDs** — Automatic `x-request-id` header inspection or unique UUID generation.
@@ -82,9 +98,9 @@ app.listen(3000, () => {
 
 ---
 
-## 🌳 Request Timeline Tree & Terminal Output
+## 🌳 1. Request Timeline Tree & Terminal Output
 
-When a request completes, `reqtimeline` outputs a formatted diagnostic tree report:
+When a request completes, `reqtimeline` outputs a formatted diagnostic tree report in your terminal:
 
 ```text
 ┌──────────────────────────────────────────────────────────┐
@@ -115,7 +131,30 @@ When a request completes, `reqtimeline` outputs a formatted diagnostic tree repo
 
 ---
 
-## 🔎 7. Slow Request Fingerprinting
+## 🔥 2. Critical Path Bottleneck Detection
+
+Instead of forcing you to scan raw timing lists, `reqtimeline` automatically analyzes request execution:
+
+1. **🔴 Primary Bottleneck**: Identifies the step consuming the largest percentage of total request time.
+2. **Dedicated Callout Box**: Displays exact duration and percentage contribution to total latency.
+
+---
+
+## 🧠 3. Automatic Performance Diagnosis & Heuristic Rules
+
+`reqtimeline` matches step names against pragmatic performance rules to recommend optimizations:
+
+| Step Pattern | Category | Heuristic Recommendation |
+| :--- | :--- | :--- |
+| `database`, `prisma`, `mongoose`, `postgres`, `mongo`, `sql` | Database | *Consider checking database indexes, query complexity, or connection latency.* |
+| `openai`, `stripe`, `github`, `external-api`, `fetch`, `http` | External API | *Consider checking third-party service response latency, response caching, or async background queuing.* |
+| `auth`, `jwt`, `bcrypt`, `passport`, `login` | Authentication | *Consider caching verified tokens, tuning password hashing rounds, or optimizing session store lookups.* |
+| `validation`, `zod`, `joi`, `schema` | Validation | *Consider pre-compiling validation schemas or deferring non-critical payload validation.* |
+| `cache`, `redis`, `memcached` | Cache | *Consider optimizing cache hit ratio, key TTLs, or serialization performance.* |
+
+---
+
+## 🔎 4. Slow Request Fingerprinting
 
 Group incoming requests by route pattern (`GET /api/users`) to spot performance degradation across endpoints:
 
@@ -129,7 +168,7 @@ app.get("/api/metrics/fingerprints", (req, res) => {
 });
 ```
 
-### Route Fingerprints Output
+### Route Fingerprint Response
 
 ```json
 [
@@ -150,18 +189,36 @@ app.get("/api/metrics/fingerprints", (req, res) => {
 
 ---
 
-## 📈 8. P50 / P75 / P95 / P99 Percentiles
+## 📈 5. P50 / P75 / P95 / P99 Percentiles & Performance Score
 
-Averages can hide terrible outliers. `reqtimeline` calculates full percentile distributions:
+Simple averages hide latency spikes. `reqtimeline` calculates complete percentile metrics and a normalized **Performance Score (0 - 100)**:
 
 ```typescript
 const metrics = timeline.getMetrics();
-console.log(`P50: ${metrics.p50}ms, P75: ${metrics.p75}ms, P95: ${metrics.p95}ms, P99: ${metrics.p99}ms`);
+console.log(`Score: ${metrics.performanceScore}/100`);
+console.log(`P50: ${metrics.p50}ms | P75: ${metrics.p75}ms | P95: ${metrics.p95}ms | P99: ${metrics.p99}ms`);
 ```
 
 ---
 
-## 🖥️ 16. Interactive CLI Dashboard
+## 🌐 6. External API Timing
+
+Track third-party HTTP calls, microservices, and AI APIs with explicit visual badging:
+
+```typescript
+app.get("/api/analyze", async (req, res) => {
+  await req.timeline?.time("controller", async () => {
+    await req.timeline?.time("database", () => db.query());
+    await req.timeline?.timeExternal("Stripe Payment API", () => stripe.charges.create());
+    await req.timeline?.timeExternal("OpenAI API", () => openai.chat.completions.create());
+  });
+  res.json({ ok: true });
+});
+```
+
+---
+
+## 🖥️ 7. Interactive CLI Dashboard
 
 Monitor your Express application's performance live directly from your terminal:
 
@@ -169,7 +226,7 @@ Monitor your Express application's performance live directly from your terminal:
 npx reqtimeline dashboard
 ```
 
-Outputs an ASCII bar chart of your slowest endpoints:
+Outputs an interactive dashboard with ASCII bar charts:
 
 ```text
 ┌────────────────────────────────────────────────────┐
@@ -190,42 +247,39 @@ Outputs an ASCII bar chart of your slowest endpoints:
 
 ---
 
-## 🌐 External API Timing
-
-Track third-party HTTP calls, microservices, and AI APIs cleanly:
-
-```typescript
-app.get("/api/analyze", async (req, res) => {
-  await req.timeline?.time("controller", async () => {
-    await req.timeline?.time("database", () => db.query());
-    await req.timeline?.timeExternal("Stripe Payment API", () => stripe.charges.create());
-    await req.timeline?.timeExternal("OpenAI API", () => openai.chat.completions.create());
-  });
-  res.json({ ok: true });
-});
-```
-
----
-
-## ⚙️ Configuration
+## ⚙️ Configuration Reference
 
 ```typescript
 app.use(
   timeline({
     enabled: process.env.NODE_ENV !== "production",
-    slowThreshold: 50,         // Milliseconds threshold to flag steps as slow
-    criticalThreshold: 200,    // Milliseconds threshold to flag steps as critical
-    requestIdHeader: "x-request-id", // Header to inspect for request ID
-    generateRequestId: true,   // Auto-generate UUID request ID if missing
+    slowThreshold: 50,         // Milliseconds threshold to flag steps as slow (Warning)
+    criticalThreshold: 200,    // Milliseconds threshold to flag steps as critical (Severe)
+    requestIdHeader: "x-request-id", // Request header name to inspect for Request ID
+    generateRequestId: true,   // Auto-generate UUID request ID if header is missing
     enableTree: true,          // Enable nested request tree visualization
     enableInsights: true,      // Enable heuristic diagnostic insights
     aggregate: true,           // Track global P50/P75/P95/P99 latency metrics
     output: "terminal",        // "terminal" | "json" | "silent" | custom callback
-    color: true,               // Enable ANSI colors
-    includeStatusCode: true,   // Show HTTP status code in header
+    color: true,               // Enable ANSI colors in terminal output
+    includeStatusCode: true,   // Show HTTP status code in output header
   })
 );
 ```
+
+| Option | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `enabled` | `boolean` | `process.env.NODE_ENV !== "production"` | Enables profiler. Set `false` in production for zero overhead. |
+| `slowThreshold` | `number` | `50` | Milliseconds threshold to mark a step as slow (`⚠`). |
+| `criticalThreshold` | `number` | `200` | Milliseconds threshold to mark a step as critical (`🚨`). |
+| `requestIdHeader` | `string` | `"x-request-id"` | Incoming HTTP header name to inspect for Request ID. |
+| `generateRequestId` | `boolean` | `true` | Auto-generate unique ID if header is absent. |
+| `enableTree` | `boolean` | `true` | Render step timelines as nested trees. |
+| `enableInsights` | `boolean` | `true` | Enable heuristic diagnostic recommendation engine. |
+| `aggregate` | `boolean` | `true` | Track global request metrics and route fingerprints. |
+| `output` | `"terminal" \| "json" \| "silent" \| Function` | `"terminal"` | Output target format or custom callback. |
+| `color` | `boolean` | `true` (if TTY) | Enables ANSI color formatting. |
+| `includeStatusCode` | `boolean` | `true` | Include response HTTP status code in top header. |
 
 ---
 
@@ -247,13 +301,13 @@ Returns route fingerprints sorted by slowest P95 duration.
 Returns route fingerprint for a specific route (e.g. `"GET /api/users"`).
 
 ### `timeline.resetMetrics(): void`
-Resets the global metrics and route fingerprint aggregator.
+Resets global metrics and route fingerprints.
 
 ### `req.timeline`
 The active `TimelineRecorder` instance attached to the Express `Request` object.
-- `req.timeline.mark(name: string)`: Start a named checkpoint.
-- `req.timeline.time(name: string, fn: () => Promise<T> | T)`: Profile a synchronous or asynchronous function.
-- `req.timeline.timeExternal(serviceName: string, fn: () => Promise<T> | T)`: Profile an external third-party API or microservice call.
+- `req.timeline.mark(name: string)`: Start a named checkpoint step.
+- `req.timeline.time(name: string, fn: () => Promise<T> | T)`: Profile an async or sync function (supports nested child steps).
+- `req.timeline.timeExternal(serviceName: string, fn: () => Promise<T> | T)`: Profile an external API or microservice call.
 
 ---
 
